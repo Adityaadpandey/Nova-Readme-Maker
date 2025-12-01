@@ -1,11 +1,15 @@
 [project]
-name = "work"
-version = "0.1.0"
-description = "Add your description here"
+name = "readme-generator"
+version = "2.0.0"
+description = "Interactive README generator with AI-powered code understanding"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "git",
     "gitpython>=3.1.44",
     "ollama>=0.5.1",
+    "pyyaml>=6.0",
 ]
+
+[project.scripts]
+readme-gen = "readme_generator_v2:main"
+readme-gen-simple = "main:main"
