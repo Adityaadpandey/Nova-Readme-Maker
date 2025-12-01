@@ -6,11 +6,12 @@ A fully interactive, multi-pass README generator with deep code understanding.
 Features:
 - Multi-pass analysis (analyze → ask → understand → generate → refine)
 - Interactive question-answer flow
-- Deep code understanding
+- Deep code understanding with vector store
 - Template-based generation
 - Iterative refinement
 - Missing info detection
 - Multiple LLM providers (Ollama, OpenAI, Claude)
+- Semantic code search via embeddings
 """
 
 import argparse
@@ -28,6 +29,7 @@ from question_engine import QuestionEngine, Question
 from readme_templates import TemplateManager, get_style_instructions
 from docker import clone_repo
 from model_provider import ModelProvider, create_provider, detect_provider_from_model
+from vector_store import VectorStore, CodeChunker, create_embedding_provider
 
 
 @dataclass
@@ -81,12 +83,17 @@ class GenerationContext:
 class ReadmeGeneratorV2:
     """Enhanced README generator with full interactive flow."""
     
-    def __init__(self, model: str = "llama3.2:latest", debug: bool = False, api_key: Optional[str] = None):
+    def __init__(self, model: str = "llama3.2:latest", debug: bool = False, api_key: Optional[str] = None, 
+                 use_embeddings: bool = True, embedding_provider: str = "local"):
         self.model_string = model
         self.debug = debug
+        self.api_key = api_key
         self.context = GenerationContext()
         self.analyzer: Optional[EnhancedProjectAnalyzer] = None
         self.deep_analyzer: Optional[DeepCodeAnalyzer] = None
+        self.vector_store: Optional[VectorStore] = None
+        self.use_embeddings = use_embeddings
+        self.embedding_provider_type = embedding_provider
         
         # Setup model provider (auto-detect from model string)
         provider_type, model_name = detect_provider_from_model(model)
@@ -203,12 +210,51 @@ class ReadmeGeneratorV2:
         
         print("✅ Deep analysis complete!")
         
+        # Build vector store for semantic search
+        if self.use_embeddings:
+            self._build_vector_store()
+        
         # Show summary
         summary = self.deep_analyzer.get_summary()
         if summary:
             print("\n📊 Code Insights:")
             for line in summary.split('\n')[:15]:
                 print(f"   {line}")
+    
+    def _build_vector_store(self):
+        """Build vector store for semantic code search."""
+        print("\n🔢 Building vector store for semantic search...")
+        
+        try:
+            # Create embedding provider
+            if self.embedding_provider_type == "openai" and self.api_key:
+                embedding_provider = create_embedding_provider("openai", api_key=self.api_key)
+            elif self.embedding_provider_type == "ollama":
+                embedding_provider = create_embedding_provider("ollama")
+            else:
+                # Default to local embeddings (free, no API needed)
+                embedding_provider = create_embedding_provider("local")
+            
+            # Chunk the codebase
+            chunker = CodeChunker()
+            chunks = chunker.chunk_repository()
+            
+            print(f"   📦 Created {len(chunks)} code chunks")
+            
+            # Build vector store
+            self.vector_store = VectorStore(embedding_provider)
+            self.vector_store.add_chunks(chunks)
+            self.vector_store.build_embeddings()
+            
+            print("✅ Vector store ready!")
+            
+        except ImportError as e:
+            print(f"⚠️  Could not build vector store: {e}")
+            print("   Install sentence-transformers for local embeddings: pip install sentence-transformers")
+            self.vector_store = None
+        except Exception as e:
+            print(f"⚠️  Vector store error: {e}")
+            self.vector_store = None
 
 
     def _phase3_present_findings(self):
@@ -353,7 +399,13 @@ class ReadmeGeneratorV2:
             print("⚠️  Could not get AI understanding. Continuing with detected info.")
     
     def _prepare_code_samples(self) -> str:
-        """Prepare code samples for LLM analysis."""
+        """Prepare code samples for LLM analysis using vector store if available."""
+        
+        # If we have a vector store, use semantic search to find relevant code
+        if self.vector_store:
+            return self._get_semantic_code_samples()
+        
+        # Fallback to traditional file-based sampling
         samples = []
         source_ext = {'.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.go', '.rs'}
         
@@ -373,6 +425,65 @@ class ReadmeGeneratorV2:
                     break
         
         return "\n\n".join(samples)
+    
+    def _get_semantic_code_samples(self) -> str:
+        """Get code samples using semantic search."""
+        samples = []
+        
+        # Search for different aspects of the codebase
+        queries = [
+            "main entry point application startup initialization",
+            "API routes endpoints handlers controllers",
+            "database models schema data structures",
+            "core business logic main functionality",
+            "configuration settings environment setup",
+            "authentication authorization security"
+        ]
+        
+        seen_chunks = set()
+        
+        for query in queries:
+            results = self.vector_store.search(query, top_k=3)
+            
+            for chunk, score in results:
+                if chunk.id not in seen_chunks and score > 0.3:
+                    seen_chunks.add(chunk.id)
+                    samples.append(f"=== {chunk.file_path} ({chunk.chunk_type}) ===\n{chunk.content[:1500]}")
+                    
+                    if len(samples) >= 12:
+                        break
+            
+            if len(samples) >= 12:
+                break
+        
+        return "\n\n".join(samples)
+    
+    def _get_relevant_code_for_readme(self) -> str:
+        """Get relevant code snippets for README generation using vector store."""
+        sections = []
+        
+        # Get configuration files
+        config_results = self.vector_store.search("configuration setup package dependencies", top_k=3, chunk_types=['config'])
+        for chunk, _ in config_results:
+            sections.append(f"--- {chunk.file_path} ---\n{chunk.content[:2000]}")
+        
+        # Get main application code
+        app_results = self.vector_store.search("main application entry point server", top_k=2, chunk_types=['function', 'class', 'module'])
+        for chunk, _ in app_results:
+            sections.append(f"--- {chunk.file_path} ({chunk.chunk_type}) ---\n{chunk.content[:1500]}")
+        
+        # Get API/routes if present
+        if self.context.api_endpoints:
+            api_results = self.vector_store.search("API routes endpoints handlers", top_k=2)
+            for chunk, _ in api_results:
+                sections.append(f"--- {chunk.file_path} ---\n{chunk.content[:1200]}")
+        
+        # Get documentation
+        doc_results = self.vector_store.search("readme documentation usage examples", top_k=1, chunk_types=['doc'])
+        for chunk, _ in doc_results:
+            sections.append(f"--- {chunk.file_path} ---\n{chunk.content[:1500]}")
+        
+        return "\n".join(sections)
     
     def _create_understanding_prompt(self, code_samples: str) -> str:
         """Create prompt for code understanding."""
@@ -469,11 +580,15 @@ Focus on actual functionality, not just listing technologies."""
             'version': '1.0.0'
         })
         
-        # Build file contents
+        # Build file contents - use vector store for smarter selection if available
         file_contents = ""
-        for filename, content in self.context.key_files[:8]:
-            max_len = 2000 if any(filename.endswith(ext) for ext in ['.json', '.toml', '.yml', '.yaml']) else 1200
-            file_contents += f"\n--- {filename} ---\n{content[:max_len]}\n"
+        if self.vector_store:
+            # Get relevant code for README generation
+            file_contents = self._get_relevant_code_for_readme()
+        else:
+            for filename, content in self.context.key_files[:8]:
+                max_len = 2000 if any(filename.endswith(ext) for ext in ['.json', '.toml', '.yml', '.yaml']) else 1200
+                file_contents += f"\n--- {filename} ---\n{content[:max_len]}\n"
         
         # Build user answers section
         user_info = "\n".join([f"- {k}: {v}" for k, v in self.context.user_answers.items() if v])
@@ -809,11 +924,22 @@ Environment variables for API keys:
                        help='Model to use. Auto-detects provider from name (gpt-*/o1* -> OpenAI, claude* -> Claude, else Ollama)')
     parser.add_argument('--api-key', dest='api_key', help='API key for OpenAI/Claude (or use env vars)')
     parser.add_argument('--debug', action='store_true', help='Keep debug files')
+    parser.add_argument('--no-embeddings', dest='no_embeddings', action='store_true',
+                       help='Disable vector store embeddings (faster but less accurate)')
+    parser.add_argument('--embedding-provider', dest='embedding_provider', default='local',
+                       choices=['local', 'openai', 'ollama'],
+                       help='Embedding provider for vector store (default: local)')
     
     args = parser.parse_args()
     
     try:
-        generator = ReadmeGeneratorV2(model=args.model, debug=args.debug, api_key=args.api_key)
+        generator = ReadmeGeneratorV2(
+            model=args.model, 
+            debug=args.debug, 
+            api_key=args.api_key,
+            use_embeddings=not args.no_embeddings,
+            embedding_provider=args.embedding_provider
+        )
         success = generator.run(args.repo)
         return 0 if success else 1
     except ValueError as e:

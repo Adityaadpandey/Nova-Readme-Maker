@@ -19,16 +19,18 @@ import os
 
 def print_help():
     print("""
-📝 README Generator v2.0 - Interactive & Multi-Provider
+📝 README Generator v2.0 - Interactive & Multi-Provider with Vector Store
 
 USAGE:
     python run.py <github_repo_url> [options]
 
 OPTIONS:
-    --model <name>     Model to use (auto-detects provider)
-    --api-key <key>    API key for OpenAI/Claude
-    --simple           Simple mode (no interactive questions)
-    --debug            Keep debug files and cloned repo
+    --model <name>           Model to use (auto-detects provider)
+    --api-key <key>          API key for OpenAI/Claude
+    --simple                 Simple mode (no interactive questions)
+    --debug                  Keep debug files and cloned repo
+    --no-embeddings          Disable vector store (faster but less accurate)
+    --embedding-provider X   Embedding provider: local, openai, ollama (default: local)
 
 MODELS:
     Ollama (local, default):
@@ -40,12 +42,17 @@ MODELS:
     Claude (requires ANTHROPIC_API_KEY or --api-key):
         claude-3-5-sonnet-20241022, claude-3-opus-20240229, claude-3-haiku-20240307
 
+VECTOR STORE:
+    The vector store enables semantic code search for better understanding.
+    - local: Uses sentence-transformers (free, requires: pip install sentence-transformers)
+    - openai: Uses OpenAI embeddings (requires API key)
+    - ollama: Uses Ollama embeddings (requires: ollama pull nomic-embed-text)
+
 EXAMPLES:
-    # Using Ollama (default)
+    # Basic usage with Ollama
     python run.py https://github.com/user/project
-    python run.py https://github.com/user/project --model llama3.2:3b
     
-    # Using OpenAI
+    # Using OpenAI with embeddings
     export OPENAI_API_KEY=sk-...
     python run.py https://github.com/user/project --model gpt-4o
     
@@ -53,8 +60,8 @@ EXAMPLES:
     export ANTHROPIC_API_KEY=sk-ant-...
     python run.py https://github.com/user/project --model claude-3-5-sonnet-20241022
     
-    # With explicit API key
-    python run.py https://github.com/user/project --model gpt-4o --api-key sk-...
+    # Fast mode (no embeddings)
+    python run.py https://github.com/user/project --no-embeddings
     
     # Simple mode (no questions)
     python run.py https://github.com/user/project --simple
@@ -97,9 +104,23 @@ def main():
     else:
         # Use v2 interactive generator with provider support
         print("🚀 Running INTERACTIVE mode")
+        
+        # Check for embedding options
+        no_embeddings = '--no-embeddings' in sys.argv
+        embedding_provider = 'local'
+        for i, arg in enumerate(sys.argv):
+            if arg == '--embedding-provider' and i + 1 < len(sys.argv):
+                embedding_provider = sys.argv[i + 1]
+        
         try:
             from readme_generator_v2 import ReadmeGeneratorV2
-            generator = ReadmeGeneratorV2(model=model, debug=debug_mode, api_key=api_key)
+            generator = ReadmeGeneratorV2(
+                model=model, 
+                debug=debug_mode, 
+                api_key=api_key,
+                use_embeddings=not no_embeddings,
+                embedding_provider=embedding_provider
+            )
             success = generator.run(repo_url)
             return 0 if success else 1
         except ValueError as e:
