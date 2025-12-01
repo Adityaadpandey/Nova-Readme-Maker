@@ -10,13 +10,13 @@ Features:
 - Template-based generation
 - Iterative refinement
 - Missing info detection
+- Multiple LLM providers (Ollama, OpenAI, Claude)
 """
 
 import argparse
 import os
 import shutil
 import json
-import subprocess
 from pathlib import Path
 from typing import Optional, Dict, List, Any
 from dataclasses import dataclass, field, asdict
@@ -27,6 +27,7 @@ from deep_analyzer import DeepCodeAnalyzer
 from question_engine import QuestionEngine, Question
 from readme_templates import TemplateManager, get_style_instructions
 from docker import clone_repo
+from model_provider import ModelProvider, create_provider, detect_provider_from_model
 
 
 @dataclass
@@ -80,13 +81,19 @@ class GenerationContext:
 class ReadmeGeneratorV2:
     """Enhanced README generator with full interactive flow."""
     
-    def __init__(self, model: str = "llama3.2:latest", debug: bool = False):
-        self.model = model
+    def __init__(self, model: str = "llama3.2:latest", debug: bool = False, api_key: Optional[str] = None):
+        self.model_string = model
         self.debug = debug
         self.context = GenerationContext()
         self.analyzer: Optional[EnhancedProjectAnalyzer] = None
         self.deep_analyzer: Optional[DeepCodeAnalyzer] = None
-        self.question_engine = QuestionEngine(model)
+        
+        # Setup model provider (auto-detect from model string)
+        provider_type, model_name = detect_provider_from_model(model)
+        self.provider = create_provider(provider_type, model_name, api_key)
+        
+        # Question engine uses the same provider
+        self.question_engine = QuestionEngine(self.provider)
         
     def run(self, repo_url: str) -> bool:
         """Run the complete generation pipeline."""
@@ -133,7 +140,7 @@ class ReadmeGeneratorV2:
         print("  📝 README GENERATOR v2.0 - Interactive & Intelligent")
         print("═" * 70)
         print(f"\n  Repository: {self.context.repo_url}")
-        print(f"  Model: {self.model}")
+        print(f"  Model: {self.provider.get_name()}")
         print("\n  This tool will guide you through creating the perfect README.")
         print("  It analyzes your code, asks smart questions, and refines the output.")
         print("═" * 70)
@@ -727,31 +734,8 @@ Return the COMPLETE updated README."""
         print("═" * 70)
     
     def _call_model(self, prompt: str, timeout: int = 300) -> Optional[str]:
-        """Call the Ollama model."""
-        try:
-            result = subprocess.run(
-                ["ollama", "run", self.model],
-                input=prompt.encode('utf-8'),
-                capture_output=True,
-                timeout=timeout
-            )
-            
-            if result.returncode != 0:
-                error = result.stderr.decode()[:200] if result.stderr else "Unknown error"
-                print(f"⚠️  Model error: {error}")
-                return None
-            
-            return result.stdout.decode('utf-8').strip()
-            
-        except subprocess.TimeoutExpired:
-            print(f"⚠️  Timeout after {timeout}s")
-            return None
-        except FileNotFoundError:
-            print("❌ Ollama not found. Install it and run 'ollama serve'")
-            return None
-        except Exception as e:
-            print(f"⚠️  Error: {e}")
-            return None
+        """Call the model using the configured provider."""
+        return self.provider.generate(prompt, timeout=timeout)
     
     def _clean_output(self, output: str) -> str:
         """Clean model output."""
@@ -793,22 +777,48 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+    # Using Ollama (default)
     python readme_generator_v2.py --repo https://github.com/user/project
     python readme_generator_v2.py --repo https://github.com/user/project --model llama3.2:3b
-    python readme_generator_v2.py --repo https://github.com/user/project --debug
+    
+    # Using OpenAI
+    python readme_generator_v2.py --repo https://github.com/user/project --model gpt-4o
+    python readme_generator_v2.py --repo https://github.com/user/project --model gpt-4o-mini --api-key sk-...
+    
+    # Using Claude
+    python readme_generator_v2.py --repo https://github.com/user/project --model claude-3-5-sonnet-20241022
+    
+    # Explicit provider prefix
+    python readme_generator_v2.py --repo https://github.com/user/project --model openai:gpt-4o
+    python readme_generator_v2.py --repo https://github.com/user/project --model claude:claude-3-opus-20240229
+
+Model auto-detection:
+    - Models starting with 'gpt-' or 'o1' -> OpenAI
+    - Models starting with 'claude' -> Anthropic Claude
+    - Everything else -> Ollama (local)
+    - Or use prefix: 'openai:model', 'claude:model', 'ollama:model'
+
+Environment variables for API keys:
+    - OPENAI_API_KEY for OpenAI models
+    - ANTHROPIC_API_KEY for Claude models
         """
     )
     
     parser.add_argument('--repo', required=True, help='Git repository URL')
-    parser.add_argument('--model', default='llama3.2:latest', help='Ollama model (default: llama3.2:latest)')
+    parser.add_argument('--model', default='llama3.2:latest', 
+                       help='Model to use. Auto-detects provider from name (gpt-*/o1* -> OpenAI, claude* -> Claude, else Ollama)')
+    parser.add_argument('--api-key', dest='api_key', help='API key for OpenAI/Claude (or use env vars)')
     parser.add_argument('--debug', action='store_true', help='Keep debug files')
     
     args = parser.parse_args()
     
-    generator = ReadmeGeneratorV2(model=args.model, debug=args.debug)
-    success = generator.run(args.repo)
-    
-    return 0 if success else 1
+    try:
+        generator = ReadmeGeneratorV2(model=args.model, debug=args.debug, api_key=args.api_key)
+        success = generator.run(args.repo)
+        return 0 if success else 1
+    except ValueError as e:
+        print(f"❌ Configuration error: {e}")
+        return 1
 
 
 if __name__ == "__main__":

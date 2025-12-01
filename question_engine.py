@@ -3,8 +3,7 @@ Question Engine
 Uses the LLM to generate intelligent, context-aware questions about the project.
 """
 
-import subprocess
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Union
 from dataclasses import dataclass
 
 
@@ -26,8 +25,14 @@ class Question:
 class QuestionEngine:
     """Generates and manages questions for the user."""
     
-    def __init__(self, model: str = "llama3.2:latest"):
-        self.model = model
+    def __init__(self, provider: Any):
+        """
+        Initialize with a model provider.
+        
+        Args:
+            provider: A ModelProvider instance (from model_provider.py)
+        """
+        self.provider = provider
         self.answers: Dict[str, str] = {}
     
     def generate_smart_questions(self, project_context: Dict[str, Any]) -> List[Question]:
@@ -212,15 +217,9 @@ Format each question on a new line, starting with "Q: "
 Only output the questions, nothing else."""
 
         try:
-            result = subprocess.run(
-                ["ollama", "run", self.model],
-                input=prompt.encode('utf-8'),
-                capture_output=True,
-                timeout=60
-            )
+            output = self.provider.generate(prompt, timeout=60)
             
-            if result.returncode == 0:
-                output = result.stdout.decode('utf-8').strip()
+            if output:
                 questions = []
                 
                 for line in output.split('\n'):
@@ -304,15 +303,9 @@ Format: "MISSING: [description of what's missing]"
 Only output the missing items, nothing else."""
 
         try:
-            result = subprocess.run(
-                ["ollama", "run", self.model],
-                input=prompt.encode('utf-8'),
-                capture_output=True,
-                timeout=60
-            )
+            output = self.provider.generate(prompt, timeout=60)
             
-            if result.returncode == 0:
-                output = result.stdout.decode('utf-8').strip()
+            if output:
                 questions = []
                 
                 for line in output.split('\n'):

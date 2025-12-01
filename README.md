@@ -1,96 +1,201 @@
-# 📖  Nova README Generator
+# 📝 README Generator v2.0
 
-**An advanced command‑line tool that clones a Git repository, performs deep project analysis, and uses an AI model to generate a comprehensive README.**
+An intelligent, interactive README generator that deeply understands your codebase and creates comprehensive documentation through conversation.
 
----
+## ✨ What's New in v2.0
 
-## ✨ Overview
+- **Multi-Provider Support**: Use Ollama (local), OpenAI, or Claude
+- **Interactive Q&A**: The AI asks smart questions about your project before generating
+- **Deep Code Understanding**: Analyzes actual code logic, not just config files
+- **Multi-Pass Generation**: Analyze → Ask → Understand → Generate → Refine
+- **Template System**: Choose from minimal, standard, detailed, or comprehensive styles
+- **Iterative Refinement**: Review drafts and request specific changes
+- **Missing Info Detection**: Identifies gaps and asks you to fill them
 
-- **Deep analysis** of the target repository (language, complexity, project structure).
-- **AI‑powered README generation** via Ollama – the output is tailored to the project’s real architecture.
-- **Shallow analysis mode** for quick runs on large repos.
-- **Debug mode** keeps intermediate files for troubleshooting.
-- Works with **Python ≥ 3.12** and only relies on open‑source libraries.
-
----
-
-## 🚀 Installation
+## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/Adityaadpandey/Nova-Readme-Maker
-cd Nova-Readme-Maker
-pip install .
+# Clone this repo
+git clone https://github.com/Adityaadpandey/ReadmeMaker.git
+cd ReadmeMaker
+
+# Install dependencies
+pip install -e .
+
+# Run with Ollama (default)
+python run.py https://github.com/user/project
+
+# Run with OpenAI
+export OPENAI_API_KEY=sk-...
+python run.py https://github.com/user/project --model gpt-4o
+
+# Run with Claude
+export ANTHROPIC_API_KEY=sk-ant-...
+python run.py https://github.com/user/project --model claude-3-5-sonnet-20241022
 ```
 
----
+## 📋 Requirements
 
-### CLI Options
+- Python 3.12+
+- One of the following LLM providers:
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--repo` *required* | — | Git repository URL to analyze. |
-| `--model` | `llama3.2:latest` | Ollama model name (e.g., `llama3.2:3b`, `gpt4o-mini`). |
-| `--debug` | `False` | Keeps all debug files (cloned repo, analysis logs). |
-| `--shallow` | `False` | Performs a fast shallow analysis (shallow clone + limited checks). |
-| `--simple` | `False` | (Available via `python run.py `) Skips all prompts, uses defaults. |
+| Provider | Setup | Models |
+|----------|-------|--------|
+| **Ollama** (local, free) | [Install Ollama](https://ollama.ai/), run `ollama pull llama3.2:latest` | llama3.2, mistral, codellama, etc. |
+| **OpenAI** | Set `OPENAI_API_KEY` env var | gpt-4o, gpt-4o-mini, o1-preview |
+| **Claude** | Set `ANTHROPIC_API_KEY` env var | claude-3-5-sonnet, claude-3-opus |
 
----
+For cloud providers:
+```bash
+pip install openai      # For OpenAI
+pip install anthropic   # For Claude
+```
 
-## 💡 Quick Start
+## 🎯 Usage
+
+### Basic Usage
 
 ```bash
-# Basic run (deep analysis, default model)
-python run.py  --repo https://github.com/user/project
+# Interactive mode with Ollama (default)
+python run.py https://github.com/user/project
 
-# Use a specific Ollama model
-python run.py  --repo https://github.com/user/project --model llama3.2:3b
-
-# Enable debug mode
-python run.py  --repo https://github.com/user/project --debug
-
-# Shallow analysis (faster but less thorough)
-python run.py  --repo https://github.com/user/project --shallow
+# Simple mode (no questions)
+python run.py https://github.com/user/project --simple
 ```
 
----
+### Using Different Models
 
-## 🔧 Configuration
+```bash
+# Ollama models
+python run.py https://github.com/user/project --model llama3.2:3b
+python run.py https://github.com/user/project --model mistral
+python run.py https://github.com/user/project --model codellama
 
-All configuration is handled via command‑line flags. No external config files are required.
-If you wish to **reuse a model** across multiple runs, simply add the `--model` flag with your preferred model name.
+# OpenAI models (auto-detected from name)
+python run.py https://github.com/user/project --model gpt-4o
+python run.py https://github.com/user/project --model gpt-4o-mini
+python run.py https://github.com/user/project --model o1-preview
 
----
+# Claude models (auto-detected from name)
+python run.py https://github.com/user/project --model claude-3-5-sonnet-20241022
+python run.py https://github.com/user/project --model claude-3-opus-20240229
 
-## 🧰 How It Works
+# Explicit provider prefix
+python run.py https://github.com/user/project --model openai:gpt-4o
+python run.py https://github.com/user/project --model claude:claude-3-haiku-20240307
+```
 
-1. **Clones** the target repo into a temporary `cloned_repo/` directory (shallow clone by default).
-2. **Analyzes** the repository structure, detecting language(s), file‑types, and an estimated `complexity_score`.
-3. **Generates a prompt** for Ollama that reflects the real architecture of the repo.
-4. **Runs** the selected Ollama model to produce a markdown README.
-5. **Writes** the generated README to `README.md` in the repository’s root.
+### API Key Options
 
-Debugging information (clone logs, analysis outputs) are stored in `cloned_repo/` if `--debug` is set.
+```bash
+# Via environment variable (recommended)
+export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
 
----
+# Via command line
+python run.py https://github.com/user/project --model gpt-4o --api-key sk-...
+```
+
+## 📊 README Styles
+
+| Style | Description | Best For |
+|-------|-------------|----------|
+| **Minimal** | Quick start only, ~50 lines | Simple scripts, utilities |
+| **Standard** | Balanced coverage, ~150 lines | Most projects |
+| **Detailed** | Comprehensive with examples, ~300 lines | Complex projects |
+| **Comprehensive** | Everything included, 400+ lines | Enterprise projects |
+| **API** | Focused on API documentation | Backend/API projects |
+| **CLI** | Focused on commands and options | CLI tools |
+| **Library** | Focused on API reference | npm/pip packages |
+| **Data Science** | Includes model/dataset info | ML projects |
+
+## 🔄 Generation Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 1: Clone & Analyze                                   │
+│  - Clone repository                                         │
+│  - Detect languages, frameworks, technologies               │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 2: Deep Code Analysis                                │
+│  - Find entry points, classes, functions                    │
+│  - Identify routes, models, integrations                    │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 3: Present Findings                                  │
+│  - Show detected technologies                               │
+│  - Allow corrections                                        │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 4: Interactive Q&A                                   │
+│  - Ask about project purpose, audience, features            │
+│  - Context-specific questions                               │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 5: AI Code Understanding                             │
+│  - LLM analyzes source code                                 │
+│  - User can correct understanding                           │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 6: Choose Style                                      │
+│  - Suggest best template                                    │
+│  - User selects preferred style                             │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 7: Generate README                                   │
+│  - Create with all gathered context                         │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 8: Review & Refine                                   │
+│  - Accept, refine, or regenerate                            │
+│  - Check for missing info                                   │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 9: Save & Cleanup                                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 📁 Project Structure
+
+```
+readme-generator/
+├── run.py                  # Quick launcher
+├── readme_generator_v2.py  # Main interactive generator
+├── model_provider.py       # Multi-provider LLM support (Ollama/OpenAI/Claude)
+├── analyzer.py             # Project analysis (technologies, frameworks)
+├── deep_analyzer.py        # Deep code analysis (functions, classes, routes)
+├── question_engine.py      # Smart question generation
+├── readme_templates.py     # README style templates
+├── prompt.py               # Prompt creation utilities
+├── docker.py               # Repository cloning
+├── main.py                 # Original simple generator
+└── pyproject.toml          # Project configuration
+```
 
 ## 🤝 Contributing
 
-Pull requests are welcome!
-If you discover bugs or want to add features, feel free to open an issue or submit a PR.
-Please keep the code focused on **CLI usability** and **AI‑driven generation** – this repository is a minimal, self‑contained tool.
-
----
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-Refer to the [LICENSE](LICENSE) file in this repository for licensing terms.
-If no license file is present, the legal terms are defined by the repository’s contents.
+This project is open source. Feel free to use and modify.
 
----
+## 💡 Tips
 
-## 👤 Author
-
-Built for the open‑source community.
-© 2024 – Adityaadpandey
-
----
+- **Better results**: Answer the questions thoroughly - the more context you provide, the better the README
+- **Model choice**: GPT-4o and Claude-3.5-Sonnet give excellent results; Ollama is free but may be slower
+- **Refinement**: Don't hesitate to use the refine option multiple times
+- **Debug mode**: Use `--debug` to keep the cloned repo and see what was analyzed
