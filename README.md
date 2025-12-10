@@ -1,133 +1,127 @@
 # 🚀 Nova-Readme-Maker
 
-An intelligent README generator that creates professional documentation for GitHub repositories by analyzing your code and leveraging AI models.
+> An intelligent README generator that analyzes GitHub repositories and creates professional documentation through AI-powered code understanding and interactive refinement.
 
 ## 📋 Description
 
-Nova-Readme-Maker automates the creation of comprehensive README files for your GitHub projects. It performs deep repository analysis—detecting languages, frameworks, technologies, and project complexity—then uses AI models to generate well-structured, professional documentation tailored to your project.
+Nova-Readme-Maker is a sophisticated command-line tool that automates the creation of comprehensive README files for software projects. It combines deep repository analysis with interactive LLM-guided workflows to generate context-aware documentation tailored to your project's complexity and target audience.
 
-**Why Nova-Readme-Maker?**
-- ⚡ **Fast generation** - Shallow clone and optimized analysis
-- 🧠 **Multiple AI models** - OpenAI, Anthropic Claude, and local Ollama support
-- 🔍 **Deep code understanding** - Analyzes actual code logic and project structure
-- 📊 **Complexity-aware** - Adjusts generation strategy based on project complexity
-- 🛠️ **Flexible analysis modes** - Full deep analysis or fast shallow mode
-- 🐳 **Docker-aware** - Detects containerization and microservices
+The tool clones your GitHub repository, performs multi-layer code analysis, engages you with clarifying questions, and produces a polished README.md file without requiring manual content creation.
 
-## 🛠️ Installation
+## 🎯 Key Features
 
-### Prerequisites
-- Python 3.12 or higher
-- Git
-- One of the following AI providers:
-  - **Ollama** (local, no API key needed) - [Install Ollama](https://ollama.ai)
-  - **OpenAI** API key
-  - **Anthropic** API key
+- **🔍 Deep Repository Analysis** - Automatically detects languages, frameworks, dependencies, commands, databases, and project architecture
+- **🧠 AI-Powered Generation** - Uses LLM models (Ollama, OpenAI, Anthropic) to create context-aware documentation
+- **💬 Interactive Refinement** - Multi-phase workflow with user confirmation, clarifying questions, and iterative improvement
+- **⚡ Multi-Version Support** - Three generator versions (V2, V3, Interactive) with progressive capabilities
+- **🎨 Flexible Templates** - Four README styles (minimal, standard, detailed, comprehensive) to match your needs
+- **🔗 Vector-Aware Context** - Optional semantic search using embeddings for intelligent content retrieval
+- **🛠️ Multi-Language Support** - Analyzes Python, JavaScript, TypeScript, Java, Go, Rust, PHP, and more
 
-### Setup
+## 📦 Installation
+
+### Requirements
+- Python 3.12+
+- Git (for repository cloning)
+
+### Install from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/Adityaadpandey/Nova-Readme-Maker.git
 cd Nova-Readme-Maker
-
-# Install dependencies
 pip install -e .
 ```
 
-### Dependencies
-- `gitpython>=3.1.44` - Repository cloning
-- `ollama>=0.5.1` - AI model inference
-- `pyyaml>=6.0` - Configuration management
-
-## ⚡ Quick Start
-
-### Basic Usage with Ollama (Recommended)
+### Using pip
 
 ```bash
-python main.py --repo https://github.com/user/project
+pip install readme-generator
 ```
 
-This will:
-1. Clone your repository (shallow, for speed)
-2. Analyze the project structure, languages, and frameworks
-3. Generate a comprehensive README using Ollama
-4. Save output to `README.md`
+## 🚀 Commands
 
-### Using OpenAI GPT-4
+### Basic Usage
 
+Run with default Ollama model:
 ```bash
-export OPENAI_API_KEY=sk-your-key-here
-python run.py https://github.com/user/project --model gpt-4o
+python main.py
 ```
 
-### Using Claude
+### Interactive Mode (Recommended)
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-your-key-here
-python run.py https://github.com/user/project --model claude-opus
+python interactive_readme.py --repo <GitHub-URL> --model <model-name>
 ```
 
-## 📝 Commands
-
-### Main Generation Script
+### Advanced Generation (V3)
 
 ```bash
-python main.py --repo <URL> [OPTIONS]
+python readme_generator_v3.py --repo <GitHub-URL> --model <model-name> --debug
 ```
 
-### Interactive Generator
+### Command-Line Tools
 
 ```bash
-python run.py <URL> [OPTIONS]
-```
-
-### Advanced Generator with Q&A
-
-```bash
-python readme_generator_v3.py --repo <URL> [OPTIONS]
+# Using installed package
+readme-gen --repo https://github.com/user/project --model llama3.2:latest
+readme-gen-simple
 ```
 
 ## 🎛️ Options
 
-| Option | Description | Example |
+### Global Options
+
+| Option | Description | Default |
 |--------|-------------|---------|
-| `--repo` | **Required.** GitHub repository URL | `--repo https://github.com/user/project` |
-| `--model` | AI model to use (default: `llama3.2:latest`) | `--model gpt-4o` or `--model llama3.2:3b` |
-| `--debug` | Keep debug files and enable verbose output | `--debug` |
-| `--shallow` | Perform shallow analysis for faster processing | `--shallow` |
+| `--repo` | GitHub repository URL (required) | — |
+| `--model` | LLM model to use | `llama3.2:latest` |
+| `--api-key` | API key for cloud models (OpenAI/Anthropic) | — |
+| `--debug` | Enable detailed logging | `false` |
+| `--embeddings` | Enable vector store for semantic search | `true` |
+| `--embedding-provider` | Embedding provider: `local`, `openai`, `ollama` | `local` |
 
-## 📚 Usage Examples
+### Supported Models
 
-### Example 1: Generate README for a Python Project
-
+**Local (Ollama):**
 ```bash
-python main.py --repo https://github.com/torvalds/linux
+python main.py --model llama3.2:latest
+python main.py --model llama2
+python main.py --model mistral
 ```
 
-### Example 2: Use Custom Ollama Model (3B Lightweight)
-
+**Cloud-Based:**
 ```bash
-python main.py --repo https://github.com/facebook/react --model llama3.2:3b
+python main.py --model gpt-4 --api-key sk-...
+python main.py --model claude-3-sonnet --api-key sk-ant-...
 ```
 
-### Example 3: Fast Generation with Shallow Analysis
+## 📖 Examples
+
+### Generate README for a Python Project
 
 ```bash
-python main.py --repo https://github.com/django/django --shallow
+python interactive_readme.py --repo https://github.com/pallets/flask --model llama3.2:latest
 ```
 
-### Example 4: Debug Mode with Verbose Output
+The tool will:
+1. Clone the repository
+2. Analyze project structure, dependencies, and code architecture
+3. Present findings for your confirmation
+4. Ask clarifying questions about purpose and audience
+5. Let you select a README style
+6. Generate a professional README.md
+7. Offer iterative refinement options
+
+### Generate with Debug Information
 
 ```bash
-python main.py --repo https://github.com/kubernetes/kubernetes --debug
+python readme_generator_v3.py --repo https://github.com/torvalds/linux --model gpt-4 --api-key YOUR_API_KEY --debug
 ```
 
-### Example 5: Interactive README Generation with Questions
+### Use Vector Store for Enhanced Context
 
 ```bash
-python run.py https://github.com/user/project
-# Answers smart questions about your project before generating
+python main.py --repo https://github.com/owner/project --embeddings true --embedding-provider local
 ```
 
 ## ⚙️ Configuration
@@ -135,173 +129,109 @@ python run.py https://github.com/user/project
 ### Environment Variables
 
 ```bash
-# OpenAI Configuration
-export OPENAI_API_KEY=sk-your-key
-
-# Anthropic Configuration  
-export ANTHROPIC_API_KEY=sk-ant-your-key
-
-# Ollama Configuration (optional)
-export OLLAMA_MODEL=llama3.2:latest
-export OLLAMA_TIMEOUT=1600
+export OLLAMA_BASE_URL=http://localhost:11434
+export OPENAI_API_KEY=sk-your-api-key
+export ANTHROPIC_API_KEY=sk-ant-your-api-key
 ```
 
-### Ollama Model Selection
+### Using Configuration File
 
-Available lightweight models:
-- `llama3.2:latest` - Full model (4B+)
-- `llama3.2:3b` - Lightweight (3B)
-- `mistral` - Fast and efficient
-- `neural-chat` - Optimized for documentation
+Create a `.readme-config.yaml`:
 
-Pull models with:
+```yaml
+model: llama3.2:latest
+debug: false
+use_embeddings: true
+embedding_provider: local
+api_key: null
+```
+
+Then run:
 ```bash
-ollama pull llama3.2:latest
-ollama pull llama3.2:3b
-ollama pull mistral
+python main.py --config .readme-config.yaml
 ```
 
-## 🔧 Features
+## 🏗️ Architecture Overview
 
-### Deep Project Analysis
-- **Language Detection**: Identifies primary and secondary programming languages
-- **Framework Recognition**: Detects frameworks (React, Django, Spring, etc.)
-- **Technology Stack**: Identifies databases, tools, and technologies
-- **Complexity Scoring**: Assesses project setup difficulty (0-100 points)
-- **Docker Detection**: Identifies containerization and microservices
+### Core Components
 
-### Multi-Model Support
-- **Local**: Ollama (recommended for privacy/offline)
-- **Cloud**: OpenAI GPT-4, Claude 3+
-- **Flexible**: Switch models per generation
+| Component | Purpose |
+|-----------|---------|
+| **EnhancedProjectAnalyzer** | Scans repository structure, detects tech stack, dependencies, commands |
+| **DeepCodeAnalyzer** | Parses source code across languages to extract functions, classes, routes, models |
+| **QuestionEngine** | Generates targeted clarifying questions based on project analysis |
+| **TemplateManager** | Provides four configurable README style templates |
+| **VectorStore** | Stores and retrieves project context via semantic embeddings |
 
-### Intelligent Generation
-- **Adaptive Timeouts**: Scales processing time based on project complexity
-- **Shallow Clone**: Git depth=1 for 10x faster repository acquisition
-- **Debug Mode**: Preserves intermediate analysis files
-- **Context-Aware**: Customizes documentation based on project type
-
-## ⚠️ Troubleshooting
-
-### Issue: "Ollama not found" or "Connection refused"
-
-**Solution**: Ensure Ollama is installed and running:
-```bash
-# Install Ollama from https://ollama.ai
-# Start Ollama (it runs as a service)
-ollama serve
-
-# In another terminal, verify it's working
-ollama list
-```
-
-### Issue: "No API key provided for OpenAI/Anthropic"
-
-**Solution**: Set your environment variables:
-```bash
-# For OpenAI
-export OPENAI_API_KEY=sk-your-actual-key
-
-# For Anthropic
-export ANTHROPIC_API_KEY=sk-ant-your-actual-key
-
-# Verify they're set
-echo $OPENAI_API_KEY
-```
-
-### Issue: "Model not found" with Ollama
-
-**Solution**: Download the model first:
-```bash
-ollama pull llama3.2:latest
-# Wait for download to complete
-ollama list  # Verify it's installed
-```
-
-### Issue: Generation timeout or slow performance
-
-**Solution**: Use a faster model or shallow analysis:
-```bash
-# Lightweight model
-python main.py --repo <URL> --model llama3.2:3b
-
-# Shallow analysis
-python main.py --repo <URL> --shallow
-
-# Both
-python main.py --repo <URL> --model llama3.2:3b --shallow
-```
-
-## 🏗️ How It Works
+### Data Flow
 
 ```
-GitHub URL (CLI Input)
+GitHub URL
     ↓
-Repository Clone (git depth=1)
+[Clone Repository]
     ↓
-Project Analysis
-├─ Languages & Frameworks
-├─ Technologies & Databases
-├─ Setup Complexity Assessment
-└─ Extract Key Files
+[Analyze Project Structure]
+[Analyze Source Code]
     ↓
-AI Model Processing
-├─ OpenAI/Claude (API)
-└─ Ollama (Local)
+[Present Auto-Detected Findings]
     ↓
-Markdown Generation & Cleanup
+[Ask Clarifying Questions]
     ↓
-README.md Output
+[Merge Auto-Detected + User Input]
+    ↓
+[Select README Style]
+    ↓
+[Generate README with LLM]
+    ↓
+[User Review & Refinement]
+    ↓
+[Output README.md]
 ```
 
-## 🎯 Project Complexity Levels
+## 🔧 Development
 
-| Level | Complexity Score | Analysis Timeout | Use Case |
-|-------|------------------|------------------|----------|
-| Simple | 0-25 | 800s | Single-file projects |
-| Moderate | 26-50 | 1000s | Standard applications |
-| Complex | 51-75 | 1200s | Multi-service systems |
-| Expert | 75-100 | 1600s | Enterprise projects |
-
-## 📦 Project Structure
+### Project Structure
 
 ```
 Nova-Readme-Maker/
-├── main.py                      # Main entry point (simple mode)
-├── run.py                       # Interactive mode entry
-├── readme_generator_v3.py       # Advanced generator with Q&A
-├── analyzer.py                  # EnhancedProjectAnalyzer
-├── readme.py                    # README generation logic
-├── prompt.py                    # Prompt creation
-├── clone-repo.py               # Git repository cloning
-├── pyproject.toml              # Project metadata
-└── README.md                   # This file
+├── main.py                      # Simple entry point
+├── interactive_readme.py         # Interactive multi-phase generator
+├── readme_generator_v2.py       # Enhanced generator with embeddings
+├── readme_generator_v3.py       # Advanced generator with vector store
+├── deep_analyzer.py             # Code parsing and analysis
+├── analyzer.py                  # Project structure analysis
+├── question_engine.py           # LLM-based question generation
+├── template_manager.py          # README style templates
+├── vector_store.py              # Vector database for context
+├── providers.py                 # LLM provider abstraction
+└── pyproject.toml              # Project configuration
+```
+
+### Dependencies
+
+```
+gitpython>=3.1.44      # Repository cloning
+ollama>=0.5.1          # Local LLM support
+pyyaml>=6.0            # Configuration parsing
+sentence-transformers  # Embeddings (optional)
 ```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to:
+Contributions are welcome! Please:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/improvement`)
-3. Make your changes and test thoroughly
-4. Commit with clear messages (`git commit -m "Add feature: description"`)
-5. Push to your fork (`git push origin feature/improvement`)
-6. Open a Pull Request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-### Development Tips
-
-- Run with `--debug` flag during development
-- Test with repositories of varying complexity
-- Verify output against different model providers
-- Check markdown formatting in GitHub's preview
-
-## 📄 License
+## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-**Made with ❤️ by [Aditya Pandey](https://github.com/Adityaadpandey)**
+**Built with ❤️ by [Aditya Pandey](https://github.com/Adityaadpandey)**
 
-For issues, questions, or feature requests, please [open an issue](https://github.com/Adityaadpandey/Nova-Readme-Maker/issues) on GitHub.
+Have questions? Open an issue on [GitHub](https://github.com/Adityaadpandey/Nova-Readme-Maker/issues)

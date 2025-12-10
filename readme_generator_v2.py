@@ -402,8 +402,10 @@ class ReadmeGeneratorV2:
         """Prepare code samples for LLM analysis using vector store if available."""
         
         # If we have a vector store, use semantic search to find relevant code
-        if self.vector_store:
-            return self._get_semantic_code_samples()
+        if self.vector_store and self.vector_store.chunks:
+            semantic_samples = self._get_semantic_code_samples()
+            if semantic_samples:
+                return semantic_samples
         
         # Fallback to traditional file-based sampling
         samples = []
@@ -443,18 +445,30 @@ class ReadmeGeneratorV2:
         seen_chunks = set()
         
         for query in queries:
-            results = self.vector_store.search(query, top_k=3)
-            
-            for chunk, score in results:
-                if chunk.id not in seen_chunks and score > 0.3:
-                    seen_chunks.add(chunk.id)
+            try:
+                results = self.vector_store.search(query, top_k=3)
+                
+                for chunk, score in results:
+                    # Lower threshold to 0.1 to be more inclusive
+                    if chunk.id not in seen_chunks and score > 0.1:
+                        seen_chunks.add(chunk.id)
+                        samples.append(f"=== {chunk.file_path} ({chunk.chunk_type}) ===\n{chunk.content[:1500]}")
+                        
+                        if len(samples) >= 12:
+                            break
+                
+                if len(samples) >= 12:
+                    break
+            except Exception:
+                continue
+        
+        # If semantic search didn't find much, add some chunks directly
+        if len(samples) < 3 and self.vector_store.chunks:
+            for chunk in self.vector_store.chunks[:5]:
+                if chunk.id not in seen_chunks:
                     samples.append(f"=== {chunk.file_path} ({chunk.chunk_type}) ===\n{chunk.content[:1500]}")
-                    
-                    if len(samples) >= 12:
+                    if len(samples) >= 8:
                         break
-            
-            if len(samples) >= 12:
-                break
         
         return "\n\n".join(samples)
     

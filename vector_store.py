@@ -46,12 +46,15 @@ class LocalEmbeddingProvider(EmbeddingProvider):
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         self.model_name = model_name
         self._model = None
+        self._dimension = 384  # Default for all-MiniLM-L6-v2
     
     def _load_model(self):
         if self._model is None:
             try:
                 from sentence_transformers import SentenceTransformer
                 self._model = SentenceTransformer(self.model_name)
+                # Get actual dimension from model
+                self._dimension = self._model.get_sentence_embedding_dimension()
             except ImportError:
                 raise ImportError(
                     "sentence-transformers not installed. Run: pip install sentence-transformers"
@@ -59,9 +62,14 @@ class LocalEmbeddingProvider(EmbeddingProvider):
         return self._model
     
     def embed(self, texts: List[str]) -> List[List[float]]:
-        model = self._load_model()
-        embeddings = model.encode(texts, show_progress_bar=False)
-        return embeddings.tolist()
+        try:
+            model = self._load_model()
+            embeddings = model.encode(texts, show_progress_bar=False)
+            return embeddings.tolist()
+        except Exception as e:
+            print(f"⚠️  Embedding error: {e}")
+            # Return zero vectors as fallback
+            return [[0.0] * self._dimension for _ in texts]
 
 
 class OpenAIEmbeddingProvider(EmbeddingProvider):
@@ -173,15 +181,23 @@ class VectorStore:
     def _build_matrix(self):
         """Build numpy matrix for fast similarity search."""
         if not self.chunks:
+            self._embeddings_matrix = None
             return
         
-        embeddings = [c.embedding for c in self.chunks if c.embedding]
-        if embeddings:
-            self._embeddings_matrix = np.array(embeddings)
-            # Normalize for cosine similarity
-            norms = np.linalg.norm(self._embeddings_matrix, axis=1, keepdims=True)
-            norms[norms == 0] = 1  # Avoid division by zero
-            self._embeddings_matrix = self._embeddings_matrix / norms
+        embeddings = [c.embedding for c in self.chunks if c.embedding and len(c.embedding) > 0]
+        if not embeddings:
+            self._embeddings_matrix = None
+            return
+            
+        self._embeddings_matrix = np.array(embeddings)
+        
+        # Handle NaN values
+        self._embeddings_matrix = np.nan_to_num(self._embeddings_matrix, nan=0.0)
+        
+        # Normalize for cosine similarity
+        norms = np.linalg.norm(self._embeddings_matrix, axis=1, keepdims=True)
+        norms[norms == 0] = 1  # Avoid division by zero
+        self._embeddings_matrix = self._embeddings_matrix / norms
     
     def search(self, query: str, top_k: int = 5, chunk_types: Optional[List[str]] = None) -> List[Tuple[CodeChunk, float]]:
         """
@@ -195,13 +211,18 @@ class VectorStore:
         Returns:
             List of (chunk, similarity_score) tuples
         """
-        if not self.embedding_provider or self._embeddings_matrix is None:
+        if not self.embedding_provider or self._embeddings_matrix is None or len(self._embeddings_matrix) == 0:
             # Fallback to keyword search
             return self._keyword_search(query, top_k, chunk_types)
         
         # Get query embedding
         query_embedding = np.array(self.embedding_provider.embed_single(query))
-        query_embedding = query_embedding / np.linalg.norm(query_embedding)
+        
+        # Handle zero norm (avoid division by zero)
+        norm = np.linalg.norm(query_embedding)
+        if norm == 0 or np.isnan(norm):
+            return self._keyword_search(query, top_k, chunk_types)
+        query_embedding = query_embedding / norm
         
         # Compute similarities
         similarities = np.dot(self._embeddings_matrix, query_embedding)
