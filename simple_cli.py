@@ -11,8 +11,8 @@ import signal
 import sys
 
 from analyzer import EnhancedProjectAnalyzer
-from docker import clone_repo
-from readme import generate_comprehensive_readme
+from repo import clone_repo
+from simple_gen import generate_comprehensive_readme
 
 # Try to import Rich for better UI
 try:

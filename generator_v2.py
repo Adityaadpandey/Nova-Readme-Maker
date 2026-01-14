@@ -53,16 +53,16 @@ signal.signal(signal.SIGTERM, _signal_handler)
 
 # Local imports
 from analyzer import EnhancedProjectAnalyzer
-from deep_analyzer import DeepCodeAnalyzer
-from question_engine import QuestionEngine, Question
-from readme_templates import TemplateManager, get_style_instructions
-from docker import clone_repo
-from model_provider import ModelProvider, create_provider, detect_provider_from_model
-from vector_store import VectorStore, CodeChunker, create_embedding_provider
+from analyzer_v2 import DeepCodeAnalyzer
+from questions import QuestionEngine, Question
+from templates import TemplateManager, get_style_instructions
+from repo import clone_repo
+from providers import ModelProvider, create_provider, detect_provider_from_model
+from vectors import VectorStore, CodeChunker, create_embedding_provider
 
 # Try to import Rich UI, fallback to simple mode
 try:
-    from cli_ui import (
+    from ui import (
         console, print_banner, print_phase, print_success, print_error,
         print_warning, print_info, print_step, print_analysis_table,
         print_code_insights, print_style_menu, print_readme_preview,

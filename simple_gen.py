@@ -5,7 +5,7 @@ import re
 from typing import List, Tuple
 
 from analyzer import EnhancedProjectAnalyzer
-from prompt import create_comprehensive_prompt
+from prompts import create_comprehensive_prompt
 
 
 

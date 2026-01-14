@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Nova v2.5 - Quick Launcher
+Nova v3.0 - Quick Launcher
 
-AI-powered README generator that creates human-expert quality documentation.
+AI-powered README generator with deep code scanning.
 
 Supports multiple LLM providers:
 - Ollama (local, default)
@@ -35,11 +35,9 @@ def print_help_rich():
 [bold magenta]OPTIONS[/]
     [cyan]--model <name>[/]           Model to use (auto-detects provider)
     [cyan]--api-key <key>[/]          API key for OpenAI/Claude
-    [cyan]--simple[/]                 Simple mode (no interactive questions)
-    [cyan]--quick[/]                  Quick mode (minimal questions, smart defaults)
+    [cyan]--quick[/]                  Quick mode (minimal questions)
     [cyan]--debug[/]                  Keep debug files and cloned repo
-    [cyan]--no-embeddings[/]          Disable vector store (faster)
-    [cyan]--embedding-provider X[/]   Embedding provider: local, openai, ollama
+    [cyan]--v2[/]                     Use v2 generator (legacy)
 
 [bold magenta]MODELS[/]
     [yellow]Ollama[/] (local, default):
@@ -60,9 +58,6 @@ def print_help_rich():
 
     [dim]# Quick mode with Claude[/]
     python run.py https://github.com/user/project --model claude-3-5-sonnet-20241022 --quick
-
-    [dim]# Simple mode (no questions)[/]
-    python run.py https://github.com/user/project --simple
 """
 
     banner = """
@@ -76,8 +71,8 @@ def print_help_rich():
 
     console.print(Panel(
         Text(banner, style="bold magenta", justify="center"),
-        title="[bold white]v2.5[/]",
-        subtitle="[dim]AI-Powered README Generator[/]",
+        title="[bold white]v3.0[/]",
+        subtitle="[dim]Deep Scan • Perfect READMEs[/]",
         border_style="magenta",
         box=DOUBLE,
         padding=(0, 2)
@@ -89,7 +84,7 @@ def print_help_rich():
 def print_help_simple():
     """Print help without Rich (fallback)."""
     print("""
-🚀 Nova v2.5 - AI-Powered README Generator
+🚀 Nova v3.0 - Deep Scan README Generator
 
 USAGE:
     python run.py <github_repo_url> [options]
@@ -97,39 +92,29 @@ USAGE:
 OPTIONS:
     --model <name>           Model to use (auto-detects provider)
     --api-key <key>          API key for OpenAI/Claude
-    --simple                 Simple mode (no interactive questions)
-    --quick                  Quick mode (minimal questions, smart defaults)
+    --quick                  Quick mode (minimal questions)
     --debug                  Keep debug files and cloned repo
-    --no-embeddings          Disable vector store (faster but less accurate)
-    --embedding-provider X   Embedding provider: local, openai, ollama (default: local)
+    --v2                     Use v2 generator (legacy)
 
 MODELS:
     Ollama (local, default):
-        llama3.2:latest, llama3.2:3b, mistral, codellama, etc.
+        llama3.2:latest, llama3.2:3b, mistral, codellama
 
-    OpenAI (requires OPENAI_API_KEY or --api-key):
-        gpt-4o, gpt-4o-mini, gpt-4-turbo, o1-preview, o1-mini
+    OpenAI (requires OPENAI_API_KEY):
+        gpt-4o, gpt-4o-mini, gpt-4-turbo, o1-preview
 
-    Claude (requires ANTHROPIC_API_KEY or --api-key):
-        claude-3-5-sonnet-20241022, claude-3-opus-20240229, claude-3-haiku-20240307
+    Claude (requires ANTHROPIC_API_KEY):
+        claude-3-5-sonnet-20241022, claude-3-opus-20240229
 
 EXAMPLES:
     # Basic usage with Ollama
     python run.py https://github.com/user/project
 
-    # Using OpenAI with embeddings
-    export OPENAI_API_KEY=sk-...
+    # Using OpenAI
     python run.py https://github.com/user/project --model gpt-4o
 
-    # Using Claude
-    export ANTHROPIC_API_KEY=sk-ant-...
-    python run.py https://github.com/user/project --model claude-3-5-sonnet-20241022
-
-    # Quick mode (less questions)
+    # Quick mode
     python run.py https://github.com/user/project --quick
-
-    # Simple mode (no questions)
-    python run.py https://github.com/user/project --simple
 """)
 
 
@@ -146,83 +131,103 @@ def interactive_setup():
     if not RICH_AVAILABLE:
         return None
 
-    from cli_ui import print_banner, ask_text, ask_select, ask_confirm, print_info
+    from questionary import Style as QStyle
 
-    print_banner()
+    QUESTIONARY_STYLE = QStyle([
+        ('qmark', 'fg:#673ab7 bold'),
+        ('question', 'bold'),
+        ('answer', 'fg:#2196f3 bold'),
+        ('pointer', 'fg:#673ab7 bold'),
+        ('highlighted', 'fg:#673ab7 bold'),
+        ('selected', 'fg:#2196f3'),
+    ])
+
+    # Print banner
+    banner = """
+███╗   ██╗ ██████╗ ██╗   ██╗ █████╗
+████╗  ██║██╔═══██╗██║   ██║██╔══██╗
+██╔██╗ ██║██║   ██║██║   ██║███████║
+██║╚██╗██║██║   ██║╚██╗ ██╔╝██╔══██║
+██║ ╚████║╚██████╔╝ ╚████╔╝ ██║  ██║
+╚═╝  ╚═══╝ ╚═════╝   ╚═══╝  ╚═╝  ╚═╝
+    """
+    console.print(Panel(
+        Text(banner, style="bold magenta", justify="center"),
+        title="[bold white]v3.0[/]",
+        subtitle="[dim]Deep Scan • Perfect READMEs[/]",
+        border_style="magenta",
+        box=DOUBLE
+    ))
+
     console.print()
-    console.print("[bold]Welcome to Nova![/] Let's generate a README for your project.\n")
+    console.print("[bold]Welcome to Nova![/] Let's create a perfect README.\n")
 
     # Get repository URL
-    repo_url = ask_text(
+    repo_url = questionary.text(
         "Enter the GitHub repository URL:",
-        required=True
-    )
+        style=QUESTIONARY_STYLE
+    ).ask()
 
     if not repo_url:
         return None
 
     # Select mode
-    mode = ask_select(
+    mode = questionary.select(
         "Select generation mode:",
-        [
-            "Interactive (recommended) - Guided questions for best results",
-            "Quick - Fewer questions, smart defaults",
-            "Simple - No questions, auto-generate"
-        ]
-    )
+        choices=[
+            "Interactive (recommended) - Deep scan with guided questions",
+            "Quick - Deep scan, minimal questions",
+        ],
+        style=QUESTIONARY_STYLE
+    ).ask()
 
     # Select model provider
-    provider = ask_select(
+    provider = questionary.select(
         "Select AI provider:",
-        [
+        choices=[
             "Ollama (local, free) - Requires Ollama installed",
             "OpenAI - Requires API key",
             "Claude - Requires API key"
-        ]
-    )
+        ],
+        style=QUESTIONARY_STYLE
+    ).ask()
 
     # Get model based on provider
     if "Ollama" in provider:
-        model = ask_select(
+        model = questionary.select(
             "Select Ollama model:",
-            ["llama3.2:latest", "llama3.2:3b", "mistral", "codellama", "Other"]
-        )
+            choices=["llama3.2:latest", "llama3.2:3b", "mistral", "codellama", "Other"],
+            style=QUESTIONARY_STYLE
+        ).ask()
         if model == "Other":
-            model = ask_text("Enter model name:", "llama3.2:latest")
+            model = questionary.text("Enter model name:", default="llama3.2:latest", style=QUESTIONARY_STYLE).ask()
         api_key = None
     elif "OpenAI" in provider:
-        model = ask_select(
+        model = questionary.select(
             "Select OpenAI model:",
-            ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1-preview"]
-        )
+            choices=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1-preview"],
+            style=QUESTIONARY_STYLE
+        ).ask()
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            api_key = ask_text("Enter OpenAI API key (or set OPENAI_API_KEY):", required=True)
+            api_key = questionary.text("Enter OpenAI API key:", style=QUESTIONARY_STYLE).ask()
     else:
-        model = ask_select(
+        model = questionary.select(
             "Select Claude model:",
-            ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"]
-        )
+            choices=["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"],
+            style=QUESTIONARY_STYLE
+        ).ask()
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
-            api_key = ask_text("Enter Anthropic API key (or set ANTHROPIC_API_KEY):", required=True)
+            api_key = questionary.text("Enter Anthropic API key:", style=QUESTIONARY_STYLE).ask()
 
-    # Determine mode flags
-    simple_mode = "Simple" in mode
     quick_mode = "Quick" in mode
-
-    # Use embeddings?
-    use_embeddings = True
-    if not simple_mode:
-        use_embeddings = ask_confirm("Enable semantic code search? (better results, slower)", default=True)
 
     return {
         'repo_url': repo_url,
         'model': model,
         'api_key': api_key,
-        'simple_mode': simple_mode,
         'quick_mode': quick_mode,
-        'use_embeddings': use_embeddings
     }
 
 
@@ -247,10 +252,9 @@ def main():
         repo_url = sys.argv[1]
 
         # Check for flags
-        simple_mode = '--simple' in sys.argv
         quick_mode = '--quick' in sys.argv
         debug_mode = '--debug' in sys.argv
-        no_embeddings = '--no-embeddings' in sys.argv
+        use_v2 = '--v2' in sys.argv
 
         # Get model from args
         model = 'llama3.2:latest'
@@ -264,55 +268,53 @@ def main():
             if arg == '--api-key' and i + 1 < len(sys.argv):
                 api_key = sys.argv[i + 1]
 
-        # Get embedding provider
-        embedding_provider = 'local'
-        for i, arg in enumerate(sys.argv):
-            if arg == '--embedding-provider' and i + 1 < len(sys.argv):
-                embedding_provider = sys.argv[i + 1]
-
         config = {
             'repo_url': repo_url,
             'model': model,
             'api_key': api_key,
-            'simple_mode': simple_mode,
             'quick_mode': quick_mode,
             'debug_mode': debug_mode,
-            'use_embeddings': not no_embeddings,
-            'embedding_provider': embedding_provider
+            'use_v2': use_v2,
         }
 
     # Run the generator
-    if config.get('simple_mode'):
-        # Use the original simple generator
+    if config.get('use_v2'):
+        # Use legacy v2 generator
         if RICH_AVAILABLE:
-            console.print("[magenta]🚀 Nova running in SIMPLE mode[/] (no interactive questions)")
+            console.print("[magenta]🚀 Running Nova v2 (legacy)[/]")
         else:
-            print("🚀 Nova running in SIMPLE mode (no interactive questions)")
-
-        from main import main as simple_main
-        sys.argv = ['main.py', '--repo', config['repo_url'], '--model', config['model']]
-        if config.get('debug_mode'):
-            sys.argv.append('--debug')
-        return simple_main()
-
-    else:
-        # Use v2 interactive generator with provider support
-        if RICH_AVAILABLE:
-            console.print("[magenta]🚀 Nova running in INTERACTIVE mode[/]")
-        else:
-            print("🚀 Nova running in INTERACTIVE mode")
+            print("🚀 Running Nova v2 (legacy)")
 
         try:
-            from readme_generator_v2 import ReadmeGeneratorV2
+            from generator_v2 import ReadmeGeneratorV2
             generator = ReadmeGeneratorV2(
                 model=config['model'],
                 debug=config.get('debug_mode', False),
                 api_key=config.get('api_key'),
-                use_embeddings=config.get('use_embeddings', True),
-                embedding_provider=config.get('embedding_provider', 'local'),
                 quick_mode=config.get('quick_mode', False)
             )
             success = generator.run(config['repo_url'])
+            return 0 if success else 1
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return 1
+
+    else:
+        # Use new v3 generator with deep scanning
+        if RICH_AVAILABLE:
+            console.print("[magenta]🚀 Running Nova v3 (Deep Scan)[/]")
+        else:
+            print("🚀 Running Nova v3 (Deep Scan)")
+
+        try:
+            from generator import NovaGenerator
+            generator = NovaGenerator(
+                model=config['model'],
+                api_key=config.get('api_key'),
+                debug=config.get('debug_mode', False),
+                quick_mode=config.get('quick_mode', False)
+            )
+            success = generator.generate(config['repo_url'])
             return 0 if success else 1
         except ValueError as e:
             if RICH_AVAILABLE:
@@ -321,6 +323,12 @@ def main():
             else:
                 print(f"❌ Configuration error: {e}")
                 print("\n💡 Tip: Set API key via environment variable or --api-key flag")
+            return 1
+        except Exception as e:
+            if RICH_AVAILABLE:
+                console.print(f"[red]✗ Error:[/] {e}")
+            else:
+                print(f"❌ Error: {e}")
             return 1
 
 
