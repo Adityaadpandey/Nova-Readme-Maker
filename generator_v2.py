@@ -1292,11 +1292,11 @@ Examples:
     python readme_generator_v2.py --repo https://github.com/user/project --model llama3.2:3b
 
     # Using OpenAI
-    python readme_generator_v2.py --repo https://github.com/user/project --model gpt-4o
-    python readme_generator_v2.py --repo https://github.com/user/project --model gpt-4o-mini --api-key sk-...
+    python readme_generator_v2.py --repo https://github.com/user/project --model gpt-5.2-2025-12-11
+    python readme_generator_v2.py --repo https://github.com/user/project --model gpt-5-mini-2025-08-07 --api-key sk-...
 
     # Using Claude
-    python readme_generator_v2.py --repo https://github.com/user/project --model claude-3-5-sonnet-20241022
+    python readme_generator_v2.py --repo https://github.com/user/project --model claude-sonnet-4-5-20250929
 
     # Quick mode (fewer questions)
     python readme_generator_v2.py --repo https://github.com/user/project --quick

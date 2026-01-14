@@ -6,7 +6,7 @@ AI-powered README generator with deep code scanning.
 
 Supports multiple LLM providers:
 - Ollama (local, default)
-- OpenAI (gpt-4o, gpt-4o-mini, etc.)
+- OpenAI (gpt-5.2-2025-12-11, gpt-5-mini-2025-08-07, etc.)
 - Claude (claude-3-5-sonnet, etc.)
 """
 
@@ -44,20 +44,20 @@ def print_help_rich():
         llama3.2:latest, llama3.2:3b, mistral, codellama
 
     [yellow]OpenAI[/] (requires OPENAI_API_KEY):
-        gpt-4o, gpt-4o-mini, gpt-4-turbo, o1-preview
+        gpt-5.2-2025-12-11, gpt-5-mini-2025-08-07, gpt-5-mini-2025-08-07, o1-preview
 
     [yellow]Claude[/] (requires ANTHROPIC_API_KEY):
-        claude-3-5-sonnet-20241022, claude-3-opus-20240229
+        claude-sonnet-4-5-20250929, claude-opus-4-5
 
 [bold magenta]EXAMPLES[/]
     [dim]# Basic usage with Ollama[/]
     python run.py https://github.com/user/project
 
     [dim]# Using OpenAI GPT-4[/]
-    python run.py https://github.com/user/project --model gpt-4o
+    python run.py https://github.com/user/project --model gpt-5.2-2025-12-11
 
     [dim]# Quick mode with Claude[/]
-    python run.py https://github.com/user/project --model claude-3-5-sonnet-20241022 --quick
+    python run.py https://github.com/user/project --model claude-sonnet-4-5-20250929 --quick
 """
 
     banner = """
@@ -101,17 +101,17 @@ MODELS:
         llama3.2:latest, llama3.2:3b, mistral, codellama
 
     OpenAI (requires OPENAI_API_KEY):
-        gpt-4o, gpt-4o-mini, gpt-4-turbo, o1-preview
+        gpt-5.2-2025-12-11, gpt-5-mini-2025-08-07, gpt-5-mini-2025-08-07, o1-preview
 
     Claude (requires ANTHROPIC_API_KEY):
-        claude-3-5-sonnet-20241022, claude-3-opus-20240229
+        claude-sonnet-4-5-20250929, claude-opus-4-5
 
 EXAMPLES:
     # Basic usage with Ollama
     python run.py https://github.com/user/project
 
     # Using OpenAI
-    python run.py https://github.com/user/project --model gpt-4o
+    python run.py https://github.com/user/project --model gpt-5.2-2025-12-11
 
     # Quick mode
     python run.py https://github.com/user/project --quick
@@ -205,7 +205,7 @@ def interactive_setup():
     elif "OpenAI" in provider:
         model = questionary.select(
             "Select OpenAI model:",
-            choices=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1-preview"],
+            choices=["gpt-5.2-2025-12-11", "gpt-5-mini-2025-08-07", "gpt-5-mini-2025-08-07", "o1-preview"],
             style=QUESTIONARY_STYLE
         ).ask()
         api_key = os.environ.get("OPENAI_API_KEY")
@@ -214,7 +214,7 @@ def interactive_setup():
     else:
         model = questionary.select(
             "Select Claude model:",
-            choices=["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"],
+            choices=["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5"],
             style=QUESTIONARY_STYLE
         ).ask()
         api_key = os.environ.get("ANTHROPIC_API_KEY")
