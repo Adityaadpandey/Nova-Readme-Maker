@@ -1,283 +1,479 @@
+"""
+Expert README Prompt Generator
+Creates prompts that produce human-expert quality README documentation.
+"""
+
 from typing import List, Tuple
 
 from analyzer import EnhancedProjectAnalyzer
 
+
 def create_comprehensive_prompt(analyzer: EnhancedProjectAnalyzer, key_files: List[Tuple[str, str]], repo_url: str) -> str:
-    """Create a comprehensive prompt for README generation."""
+    """Create an expert-level prompt for README generation that produces human-quality output."""
 
     project_name = analyzer.project_data.get('name') or repo_url.split('/')[-1].replace('.git', '')
+    pd = analyzer.project_data
 
-    # Build file content section with better organization
-    file_contents = ""
-    config_files = []
-    source_files = []
+    # Build organized file content section
+    file_contents = _organize_files(key_files)
 
-    for filename, content in key_files:
-        if any(filename.endswith(ext) for ext in ['.json', '.txt', '.toml', '.yml', '.yaml', 'Dockerfile']):
-            config_files.append((filename, content))
-        else:
-            source_files.append((filename, content))
+    # Build comprehensive context
+    tech_stack = _build_tech_stack(pd)
+    docker_section = _build_docker_info(pd)
+    features_section = _build_features(pd)
+    api_section = _build_api_info(pd)
+    env_section = _build_env_info(pd)
+    commands_section = _build_commands(pd)
 
-    if config_files:
-        file_contents += "\n=== CONFIGURATION FILES ===\n"
-        for filename, content in config_files:
-            file_contents += f"\n--- {filename} ---\n{content}\n"
+    # Determine project type and customize prompt accordingly
+    project_type = _detect_project_type(pd)
+    style_guide = _get_style_guide(project_type, pd)
 
-    if source_files:
-        file_contents += "\n=== SOURCE FILES ===\n"
-        for filename, content in source_files[:3]:  # Limit source files in prompt
-            file_contents += f"\n--- {filename} ---\n{content[:1500]}\n"
+    prompt = f"""You are a senior developer and technical writer with 15+ years of experience creating world-class documentation. You've written READMEs for projects used by millions of developers. Your documentation is known for being:
+- Crystal clear and immediately actionable
+- Comprehensive yet not overwhelming
+- Professional with a human touch
+- Technically accurate down to every command
 
-    # Build technology stack info
-    tech_info = f"""
-TECHNOLOGY STACK:
-- Main Language: {analyzer.project_data['main_language']}
-- Languages: {', '.join(analyzer.project_data['languages'].keys()) if analyzer.project_data['languages'] else 'Not detected'}
-- Frameworks: {', '.join(analyzer.project_data['frameworks']) if analyzer.project_data['frameworks'] else 'None detected'}
-- Technologies: {', '.join(analyzer.project_data['technologies'][:10]) if analyzer.project_data['technologies'] else 'None detected'}
-- Architecture: {analyzer.project_data['architecture_type']}
-- Setup Difficulty: {analyzer.project_data['setup_difficulty']} (Complexity Score: {analyzer.project_data['complexity_score']})
-"""
+Your task: Create the PERFECT README.md for this project. It should feel like it was written by someone who deeply understands both the code AND the needs of developers who will use it.
 
-    # Build Docker info
-    docker_info = ""
-    if analyzer.project_data['has_docker']:
-        services_info = ', '.join(analyzer.project_data['docker_services']) if analyzer.project_data['docker_services'] else 'Standard container'
-        ports_info = ', '.join(analyzer.project_data['ports']) if analyzer.project_data['ports'] else 'Not specified'
-        docker_info = f"""
-DOCKER CONFIGURATION:
-- Services: {services_info}
-- Exposed Ports: {ports_info}
-- Databases: {', '.join(analyzer.project_data['databases']) if analyzer.project_data['databases'] else 'None'}
-"""
+═══════════════════════════════════════════════════════════════════════════════
+PROJECT IDENTITY
+═══════════════════════════════════════════════════════════════════════════════
+Name: {project_name}
+Repository: {repo_url}
+Type: {project_type}
+Description: {pd.get('description', 'Analyze the code to determine')}
+Version: {pd.get('version', 'Not specified')}
+Author: {pd.get('author', 'Not specified')}
+License: {pd.get('license', 'MIT')}
 
-    # Build features info
-    features_info = ""
-    if analyzer.project_data['features']:
-        features_info = f"""
-DETECTED FEATURES:
-{', '.join(analyzer.project_data['features'])}
-"""
+═══════════════════════════════════════════════════════════════════════════════
+TECHNOLOGY ANALYSIS
+═══════════════════════════════════════════════════════════════════════════════
+{tech_stack}
 
-    # Build API info
-    api_info = ""
-    if analyzer.project_data['api_endpoints']:
-        api_info = f"""
-API ENDPOINTS DETECTED:
-{', '.join(analyzer.project_data['api_endpoints'][:10])}
-"""
+═══════════════════════════════════════════════════════════════════════════════
+DETECTED CAPABILITIES
+═══════════════════════════════════════════════════════════════════════════════
+{features_section}
 
-    # Build environment variables info
-    env_info = ""
-    if analyzer.project_data['env_example_vars']:
-        env_info = f"""
-ENVIRONMENT VARIABLES:
-{', '.join(analyzer.project_data['env_example_vars'][:10])}
-"""
+{docker_section}
 
-    prompt = f"""You are tasked with creating a comprehensive, professional README.md for a software project. Analyze the provided information and create documentation that would be helpful for both developers and users.
+{api_section}
 
-PROJECT INFORMATION:
-- Name: {project_name}
-- Repository: {repo_url}
-- Description: {analyzer.project_data.get('description', '[Analyze the code to write a description]')}
-- Version: {analyzer.project_data.get('version', 'Not specified')}
-- Author: {analyzer.project_data.get('author', 'Not specified')}
-- License: {analyzer.project_data.get('license', 'Not specified')}
+{env_section}
 
-{tech_info}
-{docker_info}
-{features_info}
-{api_info}
-{env_info}
+═══════════════════════════════════════════════════════════════════════════════
+COMMANDS (Extracted from project files)
+═══════════════════════════════════════════════════════════════════════════════
+{commands_section}
 
-PROJECT FILES ANALYSIS:
+═══════════════════════════════════════════════════════════════════════════════
+PROJECT FILES (Analyze these carefully)
+═══════════════════════════════════════════════════════════════════════════════
 {file_contents}
 
-COMMANDS DETECTED:
-- Install: {analyzer.project_data.get('install_cmd', '[Determine from files above]')}
-- Run: {analyzer.project_data.get('run_cmd', '[Determine from files above]')}
-- Development: {analyzer.project_data.get('dev_cmd', '[Determine from files above if different from run]')}
-- Test: {analyzer.project_data.get('test_cmd', '[Determine from files above]')}
-- Build: {analyzer.project_data.get('build_cmd', '[Determine from files above]')}
+═══════════════════════════════════════════════════════════════════════════════
+README REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════════════
+{style_guide}
 
-Create a comprehensive README.md with the following structure:
+═══════════════════════════════════════════════════════════════════════════════
+EXPERT WRITING GUIDELINES
+═══════════════════════════════════════════════════════════════════════════════
 
-# {project_name}
+VOICE & TONE:
+- Write like a friendly senior developer explaining to a colleague
+- Be confident but not arrogant
+- Use "you" and "your" to speak directly to the reader
+- Avoid corporate jargon and buzzwords
+- Be specific, not vague ("handles 10,000 requests/sec" not "high performance")
 
-[Write a compelling project description based on the analysis above. Include what the project does, its main purpose, and key features.]
+STRUCTURE:
+- Start with a hook that immediately shows what the project does
+- Lead with benefits, not features
+- Put the most important information first
+- Use progressive disclosure - simple overview, then details
+- Every section should answer "why should I care?"
 
-## 📋 Table of Contents
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Configuration](#configuration)
-- [Usage](#usage)
-- [API Documentation](#api-documentation) [Include only if APIs detected]
-- [Docker Deployment](#docker-deployment) [Include only if Docker detected]
-- [Development](#development)
-- [Testing](#testing) [Include only if tests detected]
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
+CODE EXAMPLES:
+- Every code block must be copy-pasteable WITHOUT modification
+- Show realistic examples, not toy demos
+- Include expected output when helpful
+- Use comments to explain non-obvious parts
+- Test every command mentally before including it
 
-## ✨ Features
+FORMATTING:
+- Use headers strategically to create scannable structure
+- Bullet points for lists of 3+ items
+- Tables for comparisons or structured data
+- Code blocks with proper language hints (```bash, ```python, etc.)
+- Emojis sparingly for visual hierarchy (📦 🚀 ⚙️ 📝 🔧 ✨)
+- Horizontal rules to separate major sections
 
-[List the key features based on the detected features and code analysis]
+WHAT TO AVOID:
+- ❌ NO placeholder text like [TODO], [Add here], [Your X here]
+- ❌ NO vague descriptions ("a powerful tool for...")
+- ❌ NO assumptions not backed by the code
+- ❌ NO outdated patterns or deprecated commands
+- ❌ NO walls of text without structure
+- ❌ NO unnecessary sections that add no value
+- ❌ NO generic content that could apply to any project
 
-## 🛠 Tech Stack
+WHAT TO INCLUDE:
+- ✅ Specific, verifiable claims backed by the code
+- ✅ Real working commands from the project
+- ✅ Clear prerequisites with version numbers
+- ✅ Troubleshooting tips for common issues
+- ✅ Links to relevant resources
+- ✅ Badges that add value (build status, license, etc.)
 
-**Languages:** {', '.join(analyzer.project_data['languages'].keys()) if analyzer.project_data['languages'] else '[List from analysis]'}
+═══════════════════════════════════════════════════════════════════════════════
+REQUIRED SECTIONS (in this order)
+═══════════════════════════════════════════════════════════════════════════════
 
-**Frameworks & Libraries:**
-{chr(10).join(f'- {framework}' for framework in analyzer.project_data['frameworks']) if analyzer.project_data['frameworks'] else '[List from analysis]'}
+1. **TITLE & BADGES**
+   - Project name with optional tagline
+   - 2-4 meaningful badges (license, version, build status)
+   - One-liner description that captures the essence
 
-**Technologies:**
-{chr(10).join(f'- {tech}' for tech in analyzer.project_data['technologies'][:10]) if analyzer.project_data['technologies'] else '[List from analysis]'}
+2. **HERO SECTION** (What & Why)
+   - 2-3 sentence compelling description
+   - Key benefits as bullet points
+   - Screenshot/demo link placeholder if applicable
 
-{f'''**Databases:**
-{chr(10).join(f'- {db}' for db in analyzer.project_data['databases'])}''' if analyzer.project_data['databases'] else ''}
+3. **TABLE OF CONTENTS** (for READMEs > 100 lines)
+   - Linked sections for easy navigation
 
-## 🚀 Getting Started
+4. **FEATURES** (if applicable)
+   - Specific, verifiable features from the code
+   - Grouped by category if many
 
-### Prerequisites
+5. **QUICK START** (Most Important!)
+   - Fastest path to "it works!" moment
+   - 3-5 commands maximum
+   - Show expected output
 
-[List the prerequisites based on the technology stack and analysis above]
+6. **INSTALLATION** (Detailed)
+   - Prerequisites with versions
+   - Step-by-step installation
+   - Verification that it worked
 
-### Installation
+7. **CONFIGURATION** (if needed)
+   - Environment variables explained
+   - Configuration file format
+   - Example configurations
 
-1. **Clone the repository**
-   ```bash
-   git clone {repo_url}
-   cd {project_name}
-   ```
+8. **USAGE** (with examples)
+   - Basic usage patterns
+   - Common use cases
+   - Advanced usage if applicable
 
-2. **Install dependencies**
-   ```bash
-   {analyzer.project_data.get('install_cmd', '[Add install command based on analysis]')}
-   ```
+9. **API DOCUMENTATION** (if API project)
+   - Endpoint list with methods
+   - Request/response examples
+   - Authentication details
 
-{f'''3. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+10. **DOCKER** (if applicable)
+    - Quick start with Docker
+    - Docker Compose setup
+    - Production deployment notes
 
-   Required environment variables:
-   {chr(10).join(f'   - `{var}`' for var in analyzer.project_data['env_example_vars'][:8])}''' if analyzer.project_data['env_example_vars'] else ''}
+11. **DEVELOPMENT**
+    - Setting up dev environment
+    - Running tests
+    - Contributing guidelines
 
-### Configuration
+12. **PROJECT STRUCTURE** (for complex projects)
+    - Key directories explained
+    - Where to find what
 
-[Describe any additional configuration steps based on the project analysis]
+13. **TROUBLESHOOTING** (if complex)
+    - Common issues and solutions
+    - Debug tips
 
-## 🎯 Usage
+14. **LICENSE & CREDITS**
+    - License type
+    - Acknowledgments if any
 
-### Development Mode
-```bash
-{analyzer.project_data.get('dev_cmd', analyzer.project_data.get('run_cmd', '[Add development command]'))}
-```
+═══════════════════════════════════════════════════════════════════════════════
+GENERATE THE README NOW
+═══════════════════════════════════════════════════════════════════════════════
 
-### Production Mode
-```bash
-{analyzer.project_data.get('run_cmd', '[Add production command]')}
-```
+Create a complete, polished README.md that a senior developer would be proud to have on their project. Make it feel like it was written by a human expert, not generated by AI. Every sentence should add value.
 
-{f'''The application will be available at:
-- Main application: http://localhost:{analyzer.project_data['ports'][0] if analyzer.project_data['ports'] else '3000'}
-{chr(10).join(f'- Service port: http://localhost:{port}' for port in analyzer.project_data['ports'][1:4])}''' if analyzer.project_data['ports'] else ''}
-
-{f'''## 📚 API Documentation
-
-This project exposes the following API endpoints:
-
-{chr(10).join(f'- `{endpoint}`' for endpoint in analyzer.project_data['api_endpoints'][:15])}
-
-[Add more detailed API documentation based on the detected endpoints]''' if analyzer.project_data['api_endpoints'] else ''}
-
-{f'''## 🐳 Docker Deployment
-
-### Using Docker Compose (Recommended)
-```bash
-docker-compose up -d
-```
-
-This will start the following services:
-{chr(10).join(f'- **{service}**: [Describe the service purpose]' for service in analyzer.project_data['docker_services'])}
-
-### Using Docker
-```bash
-docker build -t {project_name.lower()} .
-docker run -p {analyzer.project_data['ports'][0] if analyzer.project_data['ports'] else '3000'}:{analyzer.project_data['ports'][0] if analyzer.project_data['ports'] else '3000'} {project_name.lower()}
-```
-
-Access the application at http://localhost:{analyzer.project_data['ports'][0] if analyzer.project_data['ports'] else '3000'}''' if analyzer.project_data['has_docker'] else ''}
-
-## 👨‍💻 Development
-
-### Project Structure
-```
-{project_name}/
-{chr(10).join(f'├── {name}{"/" if item["type"] == "directory" else "":<20} # {item["description"]}' for name, item in list(analyzer.project_data.get('project_structure', {}).items())[:15])}
-```
-
-### Development Guidelines
-[Add development guidelines based on the project type and complexity]
-
-{f'''## 🧪 Testing
-
-Run the test suite:
-```bash
-{analyzer.project_data['test_cmd']}
-```''' if analyzer.project_data.get('test_cmd') else ''}
-
-{f'''## 🏗 Building
-
-Build the project:
-```bash
-{analyzer.project_data['build_cmd']}
-```''' if analyzer.project_data.get('build_cmd') else ''}
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-{f'This project is licensed under the {analyzer.project_data["license"]} License.' if analyzer.project_data.get('license') else 'This project license is not specified.'}
-
-## 🆘 Support
-
-If you encounter any problems or have questions, please:
-1. Check the existing issues on GitHub
-2. Create a new issue with detailed description
-3. Join our community discussions
-
----
-
-**Project Complexity:** {analyzer.project_data['setup_difficulty']} • **Setup Time:** {
-    'Few minutes' if analyzer.project_data['setup_difficulty'] == 'Easy' else
-    '15-30 minutes' if analyzer.project_data['setup_difficulty'] == 'Medium' else
-    '1-2 hours' if analyzer.project_data['setup_difficulty'] == 'Hard' else
-    '2+ hours'
-} • **Maintenance:** {'Active' if analyzer.project_data['complexity_score'] > 20 else 'Stable'}
-
-INSTRUCTIONS FOR GENERATION:
-1. **BE ACCURATE**: Only include information you can verify from the files and analysis
-2. **BE COMPREHENSIVE**: Cover all aspects of the project setup and usage
-3. **BE PRACTICAL**: Make all commands copy-pasteable and tested
-4. **BE ORGANIZED**: Use clear sections and proper markdown formatting
-5. **BE HELPFUL**: Include troubleshooting tips and common issues
-6. **BE SPECIFIC**: Replace all placeholder text with actual information from the analysis
-7. **BE MODERN**: Use contemporary documentation practices and formatting
-8. **CUSTOMIZE DEPTH**: Adjust detail level based on project complexity ({analyzer.project_data['setup_difficulty']})
-
-If you cannot determine specific information from the provided files, use your best judgment based on the detected technology stack, but clearly indicate any assumptions made.
+Start with the markdown content directly (no preamble). Begin with: # {project_name}
 """
 
     return prompt
+
+
+def _organize_files(key_files: List[Tuple[str, str]]) -> str:
+    """Organize files by type for better context."""
+    config_files = []
+    source_files = []
+    doc_files = []
+
+    config_exts = {'.json', '.toml', '.yml', '.yaml', '.ini', '.cfg', '.env'}
+    doc_exts = {'.md', '.rst', '.txt'}
+
+    for filename, content in key_files:
+        lower_name = filename.lower()
+
+        if any(lower_name.endswith(ext) for ext in config_exts) or 'dockerfile' in lower_name:
+            config_files.append((filename, content[:2500]))
+        elif any(lower_name.endswith(ext) for ext in doc_exts):
+            doc_files.append((filename, content[:1500]))
+        else:
+            source_files.append((filename, content[:2000]))
+
+    result = ""
+
+    if config_files:
+        result += "\n[CONFIGURATION FILES]\n"
+        for filename, content in config_files[:6]:
+            result += f"\n--- {filename} ---\n{content}\n"
+
+    if source_files:
+        result += "\n[SOURCE CODE]\n"
+        for filename, content in source_files[:5]:
+            result += f"\n--- {filename} ---\n{content}\n"
+
+    if doc_files:
+        result += "\n[DOCUMENTATION]\n"
+        for filename, content in doc_files[:2]:
+            result += f"\n--- {filename} ---\n{content}\n"
+
+    return result
+
+
+def _build_tech_stack(pd: dict) -> str:
+    """Build technology stack description."""
+    lines = []
+
+    if pd.get('main_language'):
+        lines.append(f"Primary Language: {pd['main_language']}")
+
+    if pd.get('languages'):
+        langs = ', '.join([f"{k} ({v} files)" for k, v in list(pd['languages'].items())[:5]])
+        lines.append(f"All Languages: {langs}")
+
+    if pd.get('frameworks'):
+        lines.append(f"Frameworks: {', '.join(pd['frameworks'][:8])}")
+
+    if pd.get('technologies'):
+        lines.append(f"Technologies: {', '.join(pd['technologies'][:12])}")
+
+    if pd.get('databases'):
+        lines.append(f"Databases: {', '.join(pd['databases'])}")
+
+    if pd.get('architecture_type'):
+        lines.append(f"Architecture: {pd['architecture_type']}")
+
+    complexity = pd.get('complexity_score', 0)
+    difficulty = pd.get('setup_difficulty', 'Unknown')
+    lines.append(f"Complexity: {difficulty} (Score: {complexity})")
+
+    return '\n'.join(lines)
+
+
+def _build_docker_info(pd: dict) -> str:
+    """Build Docker information section."""
+    if not pd.get('has_docker'):
+        return ""
+
+    lines = ["DOCKER CONFIGURATION:"]
+
+    if pd.get('docker_services'):
+        lines.append(f"  Services: {', '.join(pd['docker_services'])}")
+
+    if pd.get('ports'):
+        lines.append(f"  Exposed Ports: {', '.join(pd['ports'])}")
+
+    if pd.get('databases'):
+        lines.append(f"  Database Containers: {', '.join(pd['databases'])}")
+
+    return '\n'.join(lines)
+
+
+def _build_features(pd: dict) -> str:
+    """Build features section."""
+    if not pd.get('features'):
+        return "Features: To be determined from code analysis"
+
+    return f"Detected Features:\n  • " + '\n  • '.join(pd['features'][:15])
+
+
+def _build_api_info(pd: dict) -> str:
+    """Build API information section."""
+    if not pd.get('api_endpoints'):
+        return ""
+
+    endpoints = pd['api_endpoints'][:15]
+    lines = [f"API ENDPOINTS ({len(pd['api_endpoints'])} total):"]
+    for endpoint in endpoints:
+        lines.append(f"  • {endpoint}")
+
+    return '\n'.join(lines)
+
+
+def _build_env_info(pd: dict) -> str:
+    """Build environment variables section."""
+    if not pd.get('env_example_vars'):
+        return ""
+
+    vars_list = pd['env_example_vars'][:12]
+    lines = ["ENVIRONMENT VARIABLES:"]
+    for var in vars_list:
+        lines.append(f"  • {var}")
+
+    return '\n'.join(lines)
+
+
+def _build_commands(pd: dict) -> str:
+    """Build commands section."""
+    lines = []
+
+    if pd.get('install_cmd'):
+        lines.append(f"Install: {pd['install_cmd']}")
+    else:
+        lines.append("Install: [Determine from package manager files]")
+
+    if pd.get('run_cmd'):
+        lines.append(f"Run: {pd['run_cmd']}")
+    else:
+        lines.append("Run: [Determine from scripts or entry points]")
+
+    if pd.get('dev_cmd'):
+        lines.append(f"Development: {pd['dev_cmd']}")
+
+    if pd.get('test_cmd'):
+        lines.append(f"Test: {pd['test_cmd']}")
+
+    if pd.get('build_cmd'):
+        lines.append(f"Build: {pd['build_cmd']}")
+
+    return '\n'.join(lines)
+
+
+def _detect_project_type(pd: dict) -> str:
+    """Detect the type of project for customized prompt."""
+    frameworks = [f.lower() for f in pd.get('frameworks', [])]
+    features = [f.lower() for f in pd.get('features', [])]
+    languages = list(pd.get('languages', {}).keys())
+
+    # API/Backend
+    if any(f in frameworks for f in ['fastapi', 'flask', 'express.js', 'django', 'nestjs', 'spring boot']):
+        if pd.get('api_endpoints'):
+            return "API/Backend Service"
+        return "Web Application"
+
+    # CLI Tool
+    if 'cli' in features or any(t in str(pd.get('technologies', [])).lower() for t in ['argparse', 'click', 'typer', 'commander']):
+        return "CLI Tool"
+
+    # Library/Package
+    if pd.get('architecture_type') == 'library' or 'setup.py' in str(pd.get('key_files', [])):
+        return "Library/Package"
+
+    # Data Science
+    if any(t.lower() in ['tensorflow', 'pytorch', 'pandas', 'numpy', 'jupyter', 'scikit-learn'] for t in pd.get('technologies', [])):
+        return "Data Science/ML Project"
+
+    # Frontend
+    if any(f in frameworks for f in ['react', 'vue.js', 'angular', 'next.js', 'svelte']):
+        return "Frontend Application"
+
+    # Full Stack
+    if len(frameworks) > 2:
+        return "Full-Stack Application"
+
+    # Default
+    if 'Python' in languages:
+        return "Python Application"
+    elif 'JavaScript' in languages or 'TypeScript' in languages:
+        return "JavaScript/Node.js Application"
+
+    return "Software Project"
+
+
+def _get_style_guide(project_type: str, pd: dict) -> str:
+    """Get project-type specific style guide."""
+    complexity = pd.get('complexity_score', 0)
+
+    base_guide = f"""
+Project Type: {project_type}
+Complexity: {pd.get('setup_difficulty', 'Medium')} ({complexity} points)
+"""
+
+    if project_type == "API/Backend Service":
+        return base_guide + """
+FOCUS AREAS for API projects:
+- API endpoint documentation with request/response examples
+- Authentication and authorization details
+- Rate limiting and error handling
+- Docker/deployment instructions
+- Environment variables for secrets
+- Database setup and migrations
+"""
+
+    elif project_type == "CLI Tool":
+        return base_guide + """
+FOCUS AREAS for CLI tools:
+- Command reference with all options
+- Multiple usage examples
+- Installation via package managers
+- Shell completion setup if available
+- Configuration file format
+"""
+
+    elif project_type == "Library/Package":
+        return base_guide + """
+FOCUS AREAS for libraries:
+- Installation via package managers (pip, npm, etc.)
+- Quick import and basic usage
+- API reference for main functions
+- Compatibility information (Python versions, Node versions, etc.)
+- TypeScript types if applicable
+"""
+
+    elif project_type == "Data Science/ML Project":
+        return base_guide + """
+FOCUS AREAS for data science projects:
+- Data requirements and format
+- Model architecture overview
+- Training instructions
+- Inference/prediction examples
+- Results and benchmarks if available
+- Jupyter notebook links
+"""
+
+    elif "Frontend" in project_type:
+        return base_guide + """
+FOCUS AREAS for frontend projects:
+- Live demo link if available
+- Screenshots or GIFs
+- Build and deploy instructions
+- Browser compatibility
+- Component architecture overview
+"""
+
+    else:
+        if complexity > 40:
+            return base_guide + """
+FOCUS AREAS for complex projects:
+- Comprehensive prerequisites
+- Detailed architecture overview
+- Step-by-step setup with verification
+- Troubleshooting section
+- Development workflow
+"""
+        else:
+            return base_guide + """
+FOCUS AREAS for standard projects:
+- Quick start (3-5 commands)
+- Clear installation steps
+- Basic usage examples
+- Configuration options
+"""

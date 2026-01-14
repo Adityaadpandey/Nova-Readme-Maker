@@ -1,15 +1,17 @@
 [project]
-name = "readme-generator"
-version = "2.0.0"
-description = "Interactive README generator with AI-powered code understanding"
+name = "nova"
+version = "2.5.0"
+description = "Nova - AI-powered README generator that creates human-expert quality documentation"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "gitpython>=3.1.44",
     "ollama>=0.5.1",
     "pyyaml>=6.0",
+    "rich>=13.7.0",
+    "questionary>=2.0.0",
 ]
 
 [project.scripts]
-readme-gen = "readme_generator_v2:main"
-readme-gen-simple = "main:main"
+nova = "readme_generator_v2:main"
+nova-simple = "main:main"
